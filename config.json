@@ -1,0 +1,8 @@
+{
+  "device_ip": "192.168.1.100",
+  "schedule": {
+    "on_time": "08:00",
+    "off_time": "22:00"
+  },
+  "enabled": true
+}
