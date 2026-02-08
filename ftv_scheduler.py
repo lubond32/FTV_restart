@@ -16,10 +16,7 @@ class FTVScheduler:
     
     def load_config(self):
         """Load configuration from JSON file"""
-        if os.path.exists(self.config_file):
-            with open(self.config_file, 'r') as f:
-                return json.load(f)
-        return {
+        default_config = {
             'device_ip': '192.168.1.100',
             'schedule': {
                 'on_time': '08:00',
@@ -27,6 +24,22 @@ class FTVScheduler:
             },
             'enabled': True
         }
+        
+        if os.path.exists(self.config_file):
+            try:
+                with open(self.config_file, 'r') as f:
+                    config = json.load(f)
+                # Ensure required keys exist
+                if 'schedule' not in config:
+                    config['schedule'] = default_config['schedule']
+                if 'on_time' not in config['schedule']:
+                    config['schedule']['on_time'] = default_config['schedule']['on_time']
+                if 'off_time' not in config['schedule']:
+                    config['schedule']['off_time'] = default_config['schedule']['off_time']
+                return config
+            except (json.JSONDecodeError, IOError):
+                return default_config
+        return default_config
     
     def save_config(self):
         """Save configuration to JSON file"""
@@ -55,12 +68,16 @@ class FTVScheduler:
             print("Scheduler is disabled")
             return None
         
-        now = datetime.now().time()
-        on_time_str = self.config['schedule']['on_time']
-        off_time_str = self.config['schedule']['off_time']
-        
-        on_time = datetime.strptime(on_time_str, '%H:%M').time()
-        off_time = datetime.strptime(off_time_str, '%H:%M').time()
+        try:
+            now = datetime.now().time()
+            on_time_str = self.config.get('schedule', {}).get('on_time', '08:00')
+            off_time_str = self.config.get('schedule', {}).get('off_time', '22:00')
+            
+            on_time = datetime.strptime(on_time_str, '%H:%M').time()
+            off_time = datetime.strptime(off_time_str, '%H:%M').time()
+        except (ValueError, KeyError) as e:
+            print(f"Error parsing schedule times: {e}")
+            return None
         
         current_minutes = now.hour * 60 + now.minute
         on_minutes = on_time.hour * 60 + on_time.minute
@@ -79,8 +96,8 @@ class FTVScheduler:
         return {
             'enabled': self.config.get('enabled', True),
             'device_ip': self.config.get('device_ip', '192.168.1.100'),
-            'on_time': self.config['schedule']['on_time'],
-            'off_time': self.config['schedule']['off_time']
+            'on_time': self.config.get('schedule', {}).get('on_time', '08:00'),
+            'off_time': self.config.get('schedule', {}).get('off_time', '22:00')
         }
 
 
@@ -117,10 +134,25 @@ def main():
         else:
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] No scheduled action at this time")
     elif args.action == 'set-schedule':
+        # Validate time formats before saving
         if args.on_time:
-            scheduler.config['schedule']['on_time'] = args.on_time
+            try:
+                datetime.strptime(args.on_time, '%H:%M')
+                if 'schedule' not in scheduler.config:
+                    scheduler.config['schedule'] = {}
+                scheduler.config['schedule']['on_time'] = args.on_time
+            except ValueError:
+                print(f"Error: Invalid on-time format '{args.on_time}'. Use HH:MM format (e.g., 08:00)")
+                sys.exit(1)
         if args.off_time:
-            scheduler.config['schedule']['off_time'] = args.off_time
+            try:
+                datetime.strptime(args.off_time, '%H:%M')
+                if 'schedule' not in scheduler.config:
+                    scheduler.config['schedule'] = {}
+                scheduler.config['schedule']['off_time'] = args.off_time
+            except ValueError:
+                print(f"Error: Invalid off-time format '{args.off_time}'. Use HH:MM format (e.g., 22:00)")
+                sys.exit(1)
         if args.device_ip:
             scheduler.config['device_ip'] = args.device_ip
         scheduler.save_config()
