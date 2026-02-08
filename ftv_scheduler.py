@@ -5,6 +5,7 @@ FTV Scheduler - Regularly turn on/off Fire TV device
 import json
 import os
 import sys
+import re
 from datetime import datetime, time
 import argparse
 
@@ -13,6 +14,16 @@ class FTVScheduler:
     def __init__(self, config_file='config.json'):
         self.config_file = config_file
         self.config = self.load_config()
+    
+    @staticmethod
+    def validate_ip(ip):
+        """Validate IP address format"""
+        pattern = r'^(\d{1,3}\.){3}\d{1,3}$'
+        if not re.match(pattern, ip):
+            return False
+        # Check that each octet is in valid range
+        octets = ip.split('.')
+        return all(0 <= int(octet) <= 255 for octet in octets)
     
     def load_config(self):
         """Load configuration from JSON file"""
@@ -154,6 +165,9 @@ def main():
                 print(f"Error: Invalid off-time format '{args.off_time}'. Use HH:MM format (e.g., 22:00)")
                 sys.exit(1)
         if args.device_ip:
+            if not scheduler.validate_ip(args.device_ip):
+                print(f"Error: Invalid IP address format '{args.device_ip}'. Use format: xxx.xxx.xxx.xxx")
+                sys.exit(1)
             scheduler.config['device_ip'] = args.device_ip
         scheduler.save_config()
         print("Schedule updated successfully")

@@ -79,6 +79,10 @@ To run automatically, add to crontab (runs every minute):
 * * * * * cd /path/to/FTV_restart && python3 ftv_scheduler.py check
 ```
 
+**Note:** The scheduler uses a 1-minute window to trigger actions. When running via cron every minute, 
+the same schedule time will only trigger once since the script checks if the current time is within 
+1 minute of the scheduled time.
+
 ## Ako regulárne zapnúť/vypnúť FTV (Slovak)
 
 Pre automatické zapínanie a vypínanie Fire TV podľa rozvrhu:
